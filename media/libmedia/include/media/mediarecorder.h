@@ -97,6 +97,11 @@ enum audio_encoder {
     AUDIO_ENCODER_VORBIS = 6,
     AUDIO_ENCODER_OPUS = 7,
 
+    // MTK vendor profiles (bilux, frameworks/av 0007)
+    AUDIO_ENCODER_EVRC = 10,
+    AUDIO_ENCODER_QCELP = 11,
+    AUDIO_ENCODER_LPCM = 12,
+
     AUDIO_ENCODER_LIST_END // must be the last - used to validate the audio encoder type
 };
 
@@ -108,7 +113,11 @@ enum video_encoder {
     VIDEO_ENCODER_VP8 = 4,
     VIDEO_ENCODER_HEVC = 5,
 
-    VIDEO_ENCODER_LIST_END // must be the last - used to validate the video encoder type
+    VIDEO_ENCODER_LIST_END, // must be the last - used to validate the video encoder type
+    // MTK vendor profiles (bilux, frameworks/av 0007)
+    VIDEO_ENCODER_LIST_VENDOR_START = 1000,
+    VIDEO_ENCODER_H265 = 1001,
+    VIDEO_ENCODER_LIST_VENDOR_END
 };
 
 /*

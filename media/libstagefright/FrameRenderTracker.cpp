@@ -25,12 +25,39 @@
 
 namespace android {
 
+// suez (MT8173): this device's proprietary gralloc HAL (gralloc.mt8173.img.so)
+// SIGSEGVs inside its own freeBuffer() for certain video-decoder output
+// buffers -- confirmed via tombstone + disassembly that it dereferences a
+// pointer returned by an internal lookup without a NULL check, crashing
+// mediaserver. That takes down every codec/AudioTrack in the process, which
+// on this device surfaced as playback stalling and YouTube being unable to
+// switch resolution (every switch tears down the old codec, which drops the
+// last few queued-but-unrendered GraphicBuffers here, freeing them and
+// hitting the same crash). No source for the vendor blob, so the fix is
+// scoped to this framework-owned queue: keep an extra strong reference on
+// each buffer instead of letting it reach a zero refcount, so
+// GraphicBuffer::~GraphicBuffer() (and the crashing vendor freeBuffer() call
+// it leads to) never actually runs for these. This intentionally leaks a
+// handful of buffers per codec stop/teardown in exchange for not crashing
+// mediaserver; there is no other way to avoid calling into the buggy blob
+// once these are the last owning references.
+static int sLeakGraphicBufferId;
+
+void FrameRenderTracker::leakGraphicBuffers(std::list<Info> &queue) {
+    for (Info &info : queue) {
+        if (info.mGraphicBuffer != NULL) {
+            info.mGraphicBuffer->incStrong(&sLeakGraphicBufferId);
+        }
+    }
+}
+
 FrameRenderTracker::FrameRenderTracker()
     : mLastRenderTimeNs(-1),
       mComponentName("unknown component") {
 }
 
 FrameRenderTracker::~FrameRenderTracker() {
+    leakGraphicBuffers(mRenderQueue);
 }
 
 void FrameRenderTracker::setComponentName(const AString &componentName) {
@@ -38,6 +65,7 @@ void FrameRenderTracker::setComponentName(const AString &componentName) {
 }
 
 void FrameRenderTracker::clear(nsecs_t lastRenderTimeNs) {
+    leakGraphicBuffers(mRenderQueue);
     mRenderQueue.clear();
     mLastRenderTimeNs = lastRenderTimeNs;
 }

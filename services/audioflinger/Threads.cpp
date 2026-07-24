@@ -7368,6 +7368,7 @@ reacquire_wakelock:
         }
 
         // Update server timestamp with kernel stats
+#ifndef LEGACY_MTK_AV_BLOB
         if (mPipeSource.get() == nullptr /* don't obtain for FastCapture, could block */) {
             int64_t position, time;
             if (mStandby) {
@@ -7399,6 +7400,7 @@ reacquire_wakelock:
                 mTimestampVerifier.error();
             }
         }
+#endif
 
         // From the timestamp, input read latency is negative output write latency.
         const audio_input_flags_t flags = mInput != NULL ? mInput->flags : AUDIO_INPUT_FLAG_NONE;

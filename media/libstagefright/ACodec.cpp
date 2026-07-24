@@ -1111,6 +1111,12 @@ status_t ACodec::setupNativeWindowSizeFormatAndUsage(
     }
 
     usage |= kVideoGrallocUsage;
+#ifdef MTK_HARDWARE
+    // MTK decoders' output buffers need CPU-visible mapping for their
+    // post-processing step, unlike a pure GPU-only path (bilux,
+    // frameworks/av 0002).
+    usage |= (GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_SW_READ_OFTEN);
+#endif
     *finalUsage = usage;
 
     memset(&mLastNativeWindowCrop, 0, sizeof(mLastNativeWindowCrop));
@@ -1119,8 +1125,18 @@ status_t ACodec::setupNativeWindowSizeFormatAndUsage(
     ALOGV("gralloc usage: %#x(OMX) => %#x(ACodec)", omxUsage, usage);
     return setNativeWindowSizeFormatAndUsage(
             nativeWindow,
+#ifdef MTK_HARDWARE
+            // nFrameWidth/nFrameHeight don't account for MTK's hardware
+            // alignment padding; using them instead of the real stride/slice
+            // height mismatches the buffer's actual dimensions, the same
+            // class of bug as the BitmapFactory 32px-alignment issue found
+            // earlier this session (bilux, frameworks/av 0002).
+            def.format.video.nStride,
+            def.format.video.nSliceHeight,
+#else
             def.format.video.nFrameWidth,
             def.format.video.nFrameHeight,
+#endif
             def.format.video.eColorFormat,
             mRotationDegrees,
             usage,
@@ -5159,6 +5175,17 @@ status_t ACodec::getPortFormat(OMX_U32 portIndex, sp<AMessage> &notify) {
                             rect.nWidth = videoDef->nFrameWidth;
                             rect.nHeight = videoDef->nFrameHeight;
                         }
+
+#ifdef MTK_HARDWARE
+						if (!strncmp(mComponentName.c_str(), "OMX.MTK.", 8)
+                                && mOMXNode->getConfig((OMX_INDEXTYPE) 0x7f00001c, /* OMX_IndexVendorMtkOmxVdecGetCropInfo */
+								&rect, sizeof(rect)) != OK) {
+							rect.nLeft = 0;
+							rect.nTop = 0;
+							rect.nWidth = videoDef->nFrameWidth;
+							rect.nHeight = videoDef->nFrameHeight;
+						}
+#endif
 
                         if (rect.nLeft < 0 || rect.nTop < 0 ||
                             rect.nWidth == 0 || rect.nHeight == 0 ||

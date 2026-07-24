@@ -132,6 +132,12 @@ struct FrameRenderTracker {
 
 private:
 
+    // suez (MT8173): see FrameRenderTracker.cpp for why this exists -- keeps
+    // an extra strong reference on each tracked buffer so it never actually
+    // reaches a zero refcount here, to avoid calling into this device's
+    // crashing vendor gralloc freeBuffer().
+    static void leakGraphicBuffers(std::list<Info> &queue);
+
     // Render information for buffers. Regular surface buffers are queued in the order of
     // rendering. Tunneled buffers are queued in the order of receipt.
     std::list<Info> mRenderQueue;

@@ -72,6 +72,13 @@ cc_library_shared {
         "-fvisibility=hidden",
         "-Werror",
         "-Wall",
+        // suez's BoardConfig.mk sets BOARD_USES_LEGACY_MTK_AV_BLOB := true,
+        // but Android.mk was migrated to this Android.bp before that flag's
+        // corresponding source change (bilux, frameworks/av 0008) was ever
+        // applied, leaving it permanently inert. This device's audio HAL
+        // blob needs RecordThread to skip getCapturePosition() for its
+        // timestamp updates.
+        "-DLEGACY_MTK_AV_BLOB",
     ],
     sanitize: {
         integer_overflow: true,

@@ -62,6 +62,10 @@
     true; \
 }))
 
+#ifndef MTK_HARDWARE
+#define MTK_HARDWARE
+#endif
+
 namespace android {
 
 static const int64_t kMinStreamableFileSizeInBytes = 5 * 1024 * 1024;
@@ -1525,6 +1529,12 @@ static void StripStartcode(MediaBuffer *buffer) {
         buffer->set_range(
                 buffer->range_offset() + 4, buffer->range_length() - 4);
     }
+#ifdef MTK_HARDWARE //&& defined(MTK_VIDEO_HEVC_SUPPORT)
+	else if (!memcmp(ptr, "\x00\x00\x01", 3)) {
+		ALOGV("StripStartcode 00 00 01 for HEVC directlink");
+		buffer->set_range(buffer->range_offset() + 3, buffer->range_length() - 3);
+	}
+#endif
 }
 
 void MPEG4Writer::addMultipleLengthPrefixedSamples_l(MediaBuffer *buffer) {
